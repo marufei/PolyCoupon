@@ -1,5 +1,6 @@
 package cn.njyyc.polycoupon.fragment;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.util.Log;
@@ -10,17 +11,7 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import com.alibaba.baichuan.android.trade.AlibcTrade;
-import com.alibaba.baichuan.android.trade.adapter.login.AlibcLogin;
-import com.alibaba.baichuan.android.trade.callback.AlibcLoginCallback;
-import com.alibaba.baichuan.android.trade.callback.AlibcTradeCallback;
-import com.alibaba.baichuan.android.trade.constants.AlibcConstants;
-import com.alibaba.baichuan.android.trade.model.AlibcShowParams;
-import com.alibaba.baichuan.android.trade.model.OpenType;
-import com.alibaba.baichuan.android.trade.model.TradeResult;
-import com.alibaba.baichuan.android.trade.page.AlibcBasePage;
-import com.alibaba.baichuan.android.trade.page.AlibcDetailPage;
-import com.alibaba.fastjson.JSON;
+import com.ali.auth.third.ui.context.CallbackContext;
 import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
 import com.android.volley.Response;
@@ -28,7 +19,6 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -40,11 +30,11 @@ import java.util.List;
 import java.util.Map;
 
 import cn.njyyc.polycoupon.Entity.HomeGoodsBean;
-import cn.njyyc.polycoupon.Entity.HomeGoodsBean.DataBean;
 import cn.njyyc.polycoupon.R;
-import cn.njyyc.polycoupon.activity.MainActivity;
 import cn.njyyc.polycoupon.adapter.Fragment_HomeLvAdapter;
 import cn.njyyc.polycoupon.http.HttpAddress;
+import cn.njyyc.polycoupon.utils.AliTkUtils;
+import cn.njyyc.polycoupon.utils.MyUtils;
 import cn.njyyc.polycoupon.utils.VolleyUtils;
 
 /**
@@ -55,7 +45,7 @@ public class HomeFragment extends BaseFragment {
     private View view;
     private ListView home_lv;
     private Fragment_HomeLvAdapter adapter;
-    private List<HomeGoodsBean.DataBean> listData=new ArrayList<>();
+    private List<HomeGoodsBean.DataBean> listData = new ArrayList<>();
 
     @Override
     protected void lazyLoad() {
@@ -65,7 +55,7 @@ public class HomeFragment extends BaseFragment {
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        view=View.inflate(getActivity(), R.layout.fragment_home,null);
+        view = View.inflate(getActivity(), R.layout.fragment_home, null);
         return view;
     }
 
@@ -80,52 +70,46 @@ public class HomeFragment extends BaseFragment {
     private void initEvent() {
         home_lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+            public void onItemClick(AdapterView<?> adapterView, View view, final int i, long l) {
+                if (AliTkUtils.aliIsLogin()) {
+                    //领券
+//                    AliTkUtils.getTick(getActivity(), listData.get(i).getCoupon_click_url());
+                    //店铺
+//                    AliTkUtils.myOrders(getActivity(),1,true);
+                    //购物车
+//                    AliTkUtils.myCards(getActivity());
+                    //获取商品详情
+                    AliTkUtils.getGoodsInfo(getActivity(),listData.get(i).getId()+"");
+                    //添加购物车
+//                    AliTkUtils.addCardPage(getActivity(),listData.get(i).getId()+"");
+                } else {
+                    AliTkUtils.aliLogin(getActivity());
+                }
 
-                //商品详情page
-                AlibcBasePage detailPage = new AlibcDetailPage(String.valueOf(listData.get(i).getId()));
-
-                //提供给三方传递配置参数
-                Map<String, String> exParams = new HashMap<>();
-                exParams.put(AlibcConstants.ISV_CODE, "appisvcode");
-
-                AlibcShowParams showParams=new AlibcShowParams(OpenType.Native,false);
-
-                //使用百川sdk提供默认的Activity打开detail
-                AlibcTrade.show(getActivity(), detailPage, showParams, null, exParams ,
-                        new AlibcTradeCallback() {
-                            @Override
-                            public void onTradeSuccess(TradeResult tradeResult) {
-                                //打开电商组件，用户操作中成功信息回调。tradeResult：成功信息（结果类型：加购，支付；支付结果）
-                                Log.e(TAG,"tradeResult:"+tradeResult.toString());
-                            }
-
-                            @Override
-                            public void onFailure(int code, String msg) {
-                                //打开电商组件，用户操作中错误信息回调。code：错误码；msg：错误信息
-                                Log.e(TAG,"msg:"+msg);
-                            }
-                        });
 
             }
         });
     }
 
+    /**
+     * 获取数据源
+     */
     private void initData() {
-        Log.e(TAG,"进入initData");
-        String url= HttpAddress.GOODS_LIST;
-        StringRequest stringRequest=new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
+        Log.e(TAG, "进入initData");
+        String url = HttpAddress.GOODS_LIST;
+        StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
-                Log.e(TAG,"response:"+response);
-                Gson gson=new Gson();
+                Log.e(TAG, "response:" + response);
+                Gson gson = new Gson();
 //                type=new TypeToken<List<DataBean>>().getType();
                 try {
-                    JSONObject jsonObject=new JSONObject(response);
-                    JSONArray jsonArray=jsonObject.getJSONArray("data");
-                    listData= gson.fromJson(String.valueOf(jsonArray),new TypeToken<List<HomeGoodsBean.DataBean>>(){}.getType());
-                    if(listData!=null){
-                        adapter=new Fragment_HomeLvAdapter(getActivity(),listData);
+                    JSONObject jsonObject = new JSONObject(response);
+                    JSONArray jsonArray = jsonObject.getJSONArray("data");
+                    listData = gson.fromJson(String.valueOf(jsonArray), new TypeToken<List<HomeGoodsBean.DataBean>>() {
+                    }.getType());
+                    if (listData != null) {
+                        adapter = new Fragment_HomeLvAdapter(getActivity(), listData);
                         home_lv.setAdapter(adapter);
                     }
                 } catch (JSONException e) {
@@ -136,15 +120,19 @@ public class HomeFragment extends BaseFragment {
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                Log.e(TAG,"error:"+error);
-                Toast.makeText(getActivity(),"网络有问题" ,Toast.LENGTH_LONG);
+                Log.e(TAG, "error:" + error);
+                Toast.makeText(getActivity(), "网络有问题", Toast.LENGTH_LONG);
             }
-        }){
+        }) {
             @Override
             protected Map<String, String> getParams() throws AuthFailureError {
-                Map<String,String > map=new HashMap<>();
-                map.put("pageSize","10");
-                map.put("p","1");
+                Map<String, String> map = new HashMap<>();
+                map.put("pageSize", "20");
+                map.put("p", "1");
+                map.put("timeStamp", MyUtils.getTimestamp());
+                map.put("sign", MyUtils.getSign());
+                MyUtils.Loge(TAG, "timeStamp:" + MyUtils.getTimestamp());
+                MyUtils.Loge(TAG, "sign:" + MyUtils.getSign());
                 return map;
             }
         };
@@ -154,7 +142,14 @@ public class HomeFragment extends BaseFragment {
     }
 
     private void initViews() {
-        home_lv=view.findViewById(R.id.home_lv);
+        home_lv = view.findViewById(R.id.home_lv);
     }
+
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        CallbackContext.onActivityResult(requestCode, resultCode, data);
+    }
+
 
 }
