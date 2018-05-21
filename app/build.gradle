@@ -5,7 +5,7 @@ android {
         config {
             keyAlias 'PolyCoupon'
             keyPassword '123456'
-            storeFile file('D:/PolyCoupon.jks')
+            storeFile file('PolyCoupon.jks')
             storePassword '123456'
         }
     }
